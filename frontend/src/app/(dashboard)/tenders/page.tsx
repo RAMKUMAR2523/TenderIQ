@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 export default async function TendersPage({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string };
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
-  const query = searchParams.q || "";
-  const category = searchParams.category || "All";
+  const params = await searchParams;
+  const query = params.q || "";
+  const category = params.category || "All";
 
   const tenders = await getTenders(query, category);
 
@@ -79,6 +80,7 @@ export default async function TendersPage({
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="default" className="bg-blue-600">{tender.source}</Badge>
                         <Badge variant="outline">{tender.department}</Badge>
                         <Badge variant="secondary">{tender.state || "National"}</Badge>
                         {tender.closingDate && new Date(tender.closingDate) < new Date(new Date().setDate(new Date().getDate() + 7)) && (

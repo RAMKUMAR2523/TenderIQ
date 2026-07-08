@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { updateCompanyProfile } from "@/app/actions/company";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -59,8 +60,10 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
     setIsSaving(false);
     
     if (result.success) {
+      toast.success("Profile updated successfully!");
       router.refresh();
-      // Toast notification would be ideal here
+    } else {
+      toast.error("Failed to update profile.");
     }
   }
 

@@ -4,15 +4,63 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, UploadCloud, Folder, Search, MoreVertical, Trash, Eye } from "lucide-react";
+import { toast } from "sonner";
+import { useRef } from "react";
 
-const mockDocuments = [
-  { id: 1, name: "GST_Certificate_2026.pdf", type: "PDF", size: "2.4 MB", uploadedAt: "Oct 12, 2026", status: "Active" },
-  { id: 2, name: "Company_Profile_v3.docx", type: "DOCX", size: "1.1 MB", uploadedAt: "Sep 28, 2026", status: "Active" },
-  { id: 3, name: "Financial_Audit_FY25.pdf", type: "PDF", size: "5.7 MB", uploadedAt: "Aug 15, 2026", status: "Active" },
-  { id: 4, name: "ISO_9001_Certificate.pdf", type: "PDF", size: "890 KB", uploadedAt: "Jun 04, 2026", status: "Expiring Soon" },
-];
+interface VaultClientProps {
+  initialDocuments: any[];
+}
 
-export default function VaultClient() {
+export default function VaultClient({ initialDocuments }: VaultClientProps) {
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", e.target.files[0]);
+
+      const res = await fetch("/api/vault/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      
+      if (data.success) {
+        setDocuments(prev => [data.document, ...prev]);
+        toast.success("Document uploaded successfully");
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (err) {
+      toast.error("Upload failed");
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleDownload = (id: string) => {
+    window.location.href = `/api/vault/download?id=${id}`;
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this document?")) return;
+    try {
+      const res = await fetch(`/api/vault/delete?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setDocuments(prev => prev.filter(doc => doc.id !== id));
+        toast.success("Document deleted");
+      } else {
+        toast.error(data.error || "Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Failed to delete document");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
@@ -22,8 +70,14 @@ export default function VaultClient() {
             Securely store and manage your company certificates and proposals.
           </p>
         </div>
-        <Button className="gap-2">
-          <UploadCloud className="w-4 h-4" /> Upload Document
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={handleUpload} 
+        />
+        <Button className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+          <UploadCloud className="w-4 h-4" /> {isUploading ? "Uploading..." : "Upload Document"}
         </Button>
       </div>
 
@@ -63,8 +117,13 @@ export default function VaultClient() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {mockDocuments.map((doc) => (
-              <Card key={doc.id} className="group transition-all hover:shadow-md hover:border-primary/30">
+            {documents.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-muted-foreground">
+                No documents in your vault.
+              </div>
+            ) : (
+              documents.map((doc) => (
+                <Card key={doc.id} className="group transition-all hover:shadow-md hover:border-primary/30">
                 <CardContent className="p-4 flex flex-col justify-between h-full">
                   <div className="flex justify-between items-start">
                     <div className="p-3 bg-primary/10 text-primary rounded-lg">
@@ -76,20 +135,21 @@ export default function VaultClient() {
                   </div>
                   <div className="mt-4">
                     <h3 className="font-semibold text-sm truncate" title={doc.name}>{doc.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{doc.size} • {doc.uploadedAt}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{doc.type} • {new Date(doc.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${doc.status === 'Expiring Soon' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${doc.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-700'}`}>
                       {doc.status}
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"><Trash className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(doc.id)}><Eye className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDelete(doc.id)}><Trash className="w-3.5 h-3.5" /></Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

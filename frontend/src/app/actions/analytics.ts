@@ -1,6 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function getDashboardStats() {
   const analytics = await db.analytics.findFirst({
@@ -32,11 +34,11 @@ export async function getDashboardStats() {
 
   return {
     totalActiveTenders: activeTenders,
-    proposalsInProgress: proposalsInProgress || 3, // fallback for UI demo
-    submittedBids: submittedBids || 12,
-    wonBids: wonBids || (analytics?.tendersWon || 5),
-    lostBids: lostBids || (analytics?.tendersLost || 2),
-    winRate: winRate > 0 ? winRate : 68,
+    proposalsInProgress: proposalsInProgress,
+    submittedBids: submittedBids,
+    wonBids: wonBids,
+    lostBids: lostBids,
+    winRate: winRate,
   };
 }
 
@@ -48,13 +50,38 @@ export async function getRecentTenders() {
 }
 
 export async function getMonthlyTrends() {
-  // Mocking trends for the chart since we don't have historical data seeded
-  return [
-    { name: 'Jan', submitted: 4, won: 1 },
-    { name: 'Feb', submitted: 3, won: 2 },
-    { name: 'Mar', submitted: 5, won: 1 },
-    { name: 'Apr', submitted: 7, won: 3 },
-    { name: 'May', submitted: 2, won: 0 },
-    { name: 'Jun', submitted: 6, won: 4 },
-  ];
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.companyId) return [];
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1); // Start of the month 6 months ago
+
+  const tenders = await db.companyTender.findMany({
+    where: {
+      companyId: session.user.companyId,
+      updatedAt: { gte: sixMonthsAgo }
+    },
+    select: { status: true, updatedAt: true }
+  });
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const trendsMap = new Map();
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    trendsMap.set(monthNames[d.getMonth()], { submitted: 0, won: 0 });
+  }
+
+  tenders.forEach(t => {
+    const month = monthNames[t.updatedAt.getMonth()];
+    if (trendsMap.has(month)) {
+      const data = trendsMap.get(month);
+      if (t.status === 'BIDDING' || t.status === 'WON' || t.status === 'LOST') data.submitted++;
+      if (t.status === 'WON') data.won++;
+    }
+  });
+
+  return Array.from(trendsMap, ([name, data]) => ({ name, ...data }));
 }

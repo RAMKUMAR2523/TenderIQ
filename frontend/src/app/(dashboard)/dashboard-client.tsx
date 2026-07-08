@@ -20,17 +20,6 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const monthlyData = [
-  { name: 'Jan', submitted: 4, won: 1 },
-  { name: 'Feb', submitted: 3, won: 2 },
-  { name: 'Mar', submitted: 5, won: 1 },
-  { name: 'Apr', submitted: 7, won: 3 },
-  { name: 'May', submitted: 2, won: 0 },
-  { name: 'Jun', submitted: 6, won: 4 },
-];
-
-const COLORS = ['#10b981', '#ef4444', '#f59e0b']; // Green for Won, Red for Lost, Amber for Pending
-
 interface DashboardClientProps {
   stats: {
     totalActiveTenders: number;
@@ -41,10 +30,13 @@ interface DashboardClientProps {
     winRate: number;
   };
   recentTenders: any[];
+  monthlyTrends: { name: string; submitted: number; won: number }[];
   user: any;
 }
 
-export default function DashboardClient({ stats, recentTenders, user }: DashboardClientProps) {
+const COLORS = ['#10b981', '#ef4444', '#f59e0b'];
+
+export default function DashboardClient({ stats, recentTenders, monthlyTrends, user }: DashboardClientProps) {
   const pieData = [
     { name: 'Won', value: stats.wonBids || 1 }, // Default to 1 for visual if 0
     { name: 'Lost', value: stats.lostBids || 1 },
@@ -60,8 +52,9 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="hover:shadow-lg transition-all duration-300 border-primary/10 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Active Tenders
@@ -75,7 +68,8 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 border-blue-500/10 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Proposals in Progress
@@ -89,7 +83,8 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 border-amber-500/10 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
             <Trophy className="h-4 w-4 text-muted-foreground" />
@@ -101,7 +96,8 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-lg transition-all duration-300 border-green-500/10 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Submitted Bids
@@ -117,8 +113,8 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader>
             <CardTitle>Submission & Win Trends</CardTitle>
             <CardDescription>
@@ -128,7 +124,7 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
+                <BarChart data={monthlyTrends}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" opacity={0.2} />
                   <XAxis 
                     dataKey="name" 
@@ -156,7 +152,7 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
           </CardContent>
         </Card>
         
-        <Card className="col-span-3">
+        <Card className="col-span-3 shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader>
             <CardTitle>Bid Outcomes</CardTitle>
             <CardDescription>
@@ -190,8 +186,8 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-1">
+        <Card className="shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader>
             <CardTitle>Recently Published Tenders</CardTitle>
             <CardDescription>
@@ -223,7 +219,7 @@ export default function DashboardClient({ stats, recentTenders, user }: Dashboar
                         </span>
                         {tender.closingDate && (
                           <span className="flex items-center gap-1">
-                            <span className="font-semibold text-foreground">Closes:</span> {new Date(tender.closingDate).toLocaleDateString()}
+                            <span className="font-semibold text-foreground">Closes:</span> {String(tender.closingDate).substring(0, 10)}
                           </span>
                         )}
                       </div>

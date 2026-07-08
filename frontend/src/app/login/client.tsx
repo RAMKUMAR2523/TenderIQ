@@ -2,14 +2,15 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 
 export default function LoginClient() {
-  const [email, setEmail] = useState("admin@techsolutions.com");
-  const [password, setPassword] = useState("hashedpassword");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -78,9 +79,9 @@ export default function LoginClient() {
               </Button>
             </div>
             
-            <div className="text-center text-sm text-muted-foreground mt-4">
-              <p>Demo Account Loaded</p>
-              <p>Just click "Sign in" to continue</p>
+            <div className="text-center text-sm text-muted-foreground mt-4 space-y-2">
+              <p><Link href="/forgot-password" className="text-primary font-medium hover:underline">Forgot password?</Link></p>
+              <p>Don't have an account? <Link href="/register" className="text-primary font-medium hover:underline">Register</Link></p>
             </div>
           </form>
         </CardContent>

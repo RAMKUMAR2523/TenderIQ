@@ -41,6 +41,16 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  // Mock monthly trends for the UI
+  const monthlyTrends = [
+    { name: 'Jan', submitted: 4, won: 1 },
+    { name: 'Feb', submitted: 3, won: 2 },
+    { name: 'Mar', submitted: 5, won: 2 },
+    { name: 'Apr', submitted: 7, won: 3 },
+    { name: 'May', submitted: 2, won: 1 },
+    { name: 'Jun', submitted: 6, won: 4 },
+  ];
+
   return (
     <DashboardClient 
       stats={{
@@ -52,6 +62,7 @@ export default async function DashboardPage() {
         winRate: (wonBids + lostBids) > 0 ? Math.round((wonBids / (wonBids + lostBids)) * 100) : 0
       }}
       recentTenders={recentTenders}
+      monthlyTrends={monthlyTrends}
       user={session?.user || null}
     />
   );

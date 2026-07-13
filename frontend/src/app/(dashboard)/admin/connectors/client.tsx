@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Activity, CheckCircle, XCircle, Database, Clock, RefreshCw } from "lucide-react";
 
 export function AdminConnectorsClient({ initialData }: { initialData: any }) {
-  const { states, logs, newTendersToday } = initialData;
+  const { states, logs, newTendersToday, totalTenders, failedConnectors, successRate } = initialData;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -24,22 +24,26 @@ export function AdminConnectorsClient({ initialData }: { initialData: any }) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tenders Ingested Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Tenders</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{newTendersToday}</div>
-            <p className="text-xs text-muted-foreground">From all sources combined</p>
+            <div className="text-2xl font-bold">{totalTenders}</div>
+            <p className="text-xs text-muted-foreground">+{newTendersToday} today</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            {failedConnectors === 0 ? (
+              <CheckCircle className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <XCircle className="h-4 w-4 text-destructive" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Stable</div>
-            <p className="text-xs text-muted-foreground">All queues processing</p>
+            <div className="text-2xl font-bold">{successRate}% Success</div>
+            <p className="text-xs text-muted-foreground">{failedConnectors} failed connectors</p>
           </CardContent>
         </Card>
       </div>

@@ -32,7 +32,52 @@ export abstract class BaseConnector {
   }
 
   /**
-   * Main execution flow: Fetch -> Normalize -> Save -> Log
+   * Initialize any required resources (e.g. browser context, api tokens)
+   */
+  public async initialize(): Promise<void> {
+    this.logging('INFO', 'Initializing connector...');
+  }
+
+  /**
+   * Health check to verify the source is reachable before syncing
+   */
+  public async healthCheck(): Promise<boolean> {
+    try {
+      this.logging('INFO', 'Performing health check...');
+      // By default, assume healthy if not overridden
+      return true;
+    } catch (error) {
+      this.logging('ERROR', `Health check failed: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Retry logic wrapper for flaky network requests
+   */
+  protected async retry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+    let lastError: any;
+    for (let i = 1; i <= maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        this.logging('WARN', `Operation failed (attempt ${i}/${maxRetries}). Retrying...`);
+        await new Promise(res => setTimeout(res, 2000 * i));
+      }
+    }
+    throw lastError;
+  }
+
+  /**
+   * Standardized logging method
+   */
+  protected logging(level: 'INFO' | 'WARN' | 'ERROR', message: string): void {
+    console.log(`[${this.sourceName}][${level}] ${message}`);
+  }
+
+  /**
+   * Main execution flow: Initialize -> HealthCheck -> Fetch -> Normalize -> Save/Update -> Log
    */
   public async sync(): Promise<{ added: number; updated: number; failed: number }> {
     const startTime = Date.now();
@@ -42,24 +87,39 @@ export abstract class BaseConnector {
     let errorDetails = '';
 
     try {
-      console.log(`[${this.sourceName}] Starting sync...`);
-      const rawData = await this.fetchTenders();
-      console.log(`[${this.sourceName}] Fetched ${rawData.length} raw records.`);
+      this.logging('INFO', 'Starting sync...');
+      await this.initialize();
+
+      const isHealthy = await this.healthCheck();
+      if (!isHealthy) {
+        throw new Error('Connector health check failed. Aborting sync.');
+      }
+
+      const rawData = await this.retry(() => this.fetchTenders());
+      this.logging('INFO', `Fetched ${rawData.length} raw records.`);
 
       for (const raw of rawData) {
         try {
           const normalized = await this.normalize(raw);
-          const result = await this.save(normalized);
-          if (result === 'ADDED') added++;
-          else if (result === 'UPDATED') updated++;
+          const existing = await this.prisma.tender.findFirst({
+            where: { referenceNumber: normalized.referenceNumber, source: this.sourceName }
+          });
+
+          if (existing) {
+            const didUpdate = await this.update(existing, normalized);
+            if (didUpdate) updated++;
+          } else {
+            await this.save(normalized);
+            added++;
+          }
         } catch (e: any) {
-          console.error(`[${this.sourceName}] Failed to process tender:`, e.message);
+          this.logging('ERROR', `Failed to process tender: ${e.message}`);
           failed++;
           errorDetails += `Failed to process a tender: ${e.message}\n`;
         }
       }
     } catch (e: any) {
-      console.error(`[${this.sourceName}] Fatal sync error:`, e.message);
+      this.logging('ERROR', `Fatal sync error: ${e.message}`);
       errorDetails = e.message;
     }
 
@@ -78,52 +138,26 @@ export abstract class BaseConnector {
       },
     });
 
-    console.log(`[${this.sourceName}] Sync complete. Added: ${added}, Updated: ${updated}, Failed: ${failed}`);
+    this.logging('INFO', `Sync complete. Added: ${added}, Updated: ${updated}, Failed: ${failed}`);
     return { added, updated, failed };
   }
 
   /**
-   * Abstract methods to be implemented by each specific connector
+   * Fetch raw data from the source (API, HTML, etc.)
    */
   protected abstract fetchTenders(): Promise<any[]>;
+  
+  /**
+   * Normalize raw data into the standardized schema
+   */
   protected abstract normalize(raw: any): Promise<NormalizedTender>;
 
   /**
-   * Save or update tender based on referenceNumber and source
+   * Save a completely new tender
    */
-  protected async save(tender: NormalizedTender): Promise<'ADDED' | 'UPDATED' | 'SKIPPED'> {
-    if (!tender.referenceNumber) {
-      throw new Error("Tender is missing referenceNumber");
-    }
+  protected async save(tender: NormalizedTender): Promise<void> {
+    if (!tender.referenceNumber) throw new Error("Tender is missing referenceNumber");
 
-    const existing = await this.prisma.tender.findFirst({
-      where: {
-        referenceNumber: tender.referenceNumber,
-        source: this.sourceName,
-      }
-    });
-
-    if (existing) {
-      // Check if update is needed (e.g., closing date changed)
-      if (
-        (tender.closingDate && existing.closingDate?.getTime() !== tender.closingDate.getTime()) ||
-        tender.hasCorrigendum !== existing.hasCorrigendum
-      ) {
-        await this.prisma.tender.update({
-          where: { id: existing.id },
-          data: {
-            closingDate: tender.closingDate,
-            hasCorrigendum: tender.hasCorrigendum,
-            tenderStatus: tender.closingDate && tender.closingDate < new Date() ? 'CLOSED' : 'ACTIVE',
-            // Update other fields as necessary
-          }
-        });
-        return 'UPDATED';
-      }
-      return 'SKIPPED';
-    }
-
-    // Insert new tender
     const newTender = await this.prisma.tender.create({
       data: {
         ...tender,
@@ -134,9 +168,28 @@ export abstract class BaseConnector {
     // Run AI Matcher asynchronously
     const matcher = new AiMatcher();
     matcher.matchTenderToCompanies(newTender.id).catch(err => {
-      console.error(`[AiMatcher] Failed to match tender ${newTender.id}:`, err);
+      this.logging('ERROR', `AiMatcher failed: ${err.message}`);
     });
+  }
 
-    return 'ADDED';
+  /**
+   * Update an existing tender if properties changed
+   */
+  protected async update(existing: Tender, tender: NormalizedTender): Promise<boolean> {
+    if (
+      (tender.closingDate && existing.closingDate?.getTime() !== tender.closingDate.getTime()) ||
+      tender.hasCorrigendum !== existing.hasCorrigendum
+    ) {
+      await this.prisma.tender.update({
+        where: { id: existing.id },
+        data: {
+          closingDate: tender.closingDate,
+          hasCorrigendum: tender.hasCorrigendum,
+          tenderStatus: tender.closingDate && tender.closingDate < new Date() ? 'CLOSED' : 'ACTIVE',
+        }
+      });
+      return true;
+    }
+    return false;
   }
 }

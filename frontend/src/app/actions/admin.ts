@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function getConnectorStatus() {
   const session = await getServerSession(authOptions);
@@ -22,6 +22,9 @@ export async function getConnectorStatus() {
     orderBy: { createdAt: 'desc' }
   });
 
+  // Fetch total tenders
+  const totalTenders = await db.tender.count();
+
   // Fetch total tenders today
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -33,5 +36,8 @@ export async function getConnectorStatus() {
     }
   });
 
-  return { states, logs, newTendersToday };
+  const failedConnectors = states.filter(s => s.lastRun?.getTime() !== s.lastSuccess?.getTime()).length;
+  const successRate = states.length > 0 ? Math.round(((states.length - failedConnectors) / states.length) * 100) : 100;
+
+  return { states, logs, newTendersToday, totalTenders, failedConnectors, successRate };
 }

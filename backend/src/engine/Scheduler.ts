@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import { CpppConnector } from './connectors/CpppConnector';
 import { GemConnector } from './connectors/GemConnector';
 import { UkContractsConnector } from './connectors/UkContractsConnector';
+import { TedConnector } from './connectors/TedConnector';
+import cron from 'node-cron';
 
 const prisma = new PrismaClient();
 
@@ -9,19 +11,20 @@ const prisma = new PrismaClient();
 const connectors = [
   new CpppConnector(prisma),
   new GemConnector(prisma),
-  new UkContractsConnector(prisma)
+  new UkContractsConnector(prisma),
+  new TedConnector(prisma)
 ];
 
 let isRunning = false;
 
-export async function runScheduler() {
+export async function runScheduler(retryCount = 0) {
   if (isRunning) {
     console.log("[Scheduler] Already running, skipping this tick.");
     return;
   }
   
   isRunning = true;
-  console.log("[Scheduler] Starting sync cycle across all connectors...");
+  console.log(`[Scheduler] Starting sync cycle across all connectors (Attempt ${retryCount + 1})...`);
 
   try {
     for (const connector of connectors) {
@@ -43,6 +46,15 @@ export async function runScheduler() {
       }
     }
     console.log("[Scheduler] Sync cycle complete.");
+  } catch (globalError: any) {
+    console.error("[Scheduler] Critical failure in sync cycle:", globalError.message);
+    if (retryCount < 3) {
+      console.log(`[Scheduler] Retrying in 5 minutes...`);
+      setTimeout(() => {
+        isRunning = false;
+        runScheduler(retryCount + 1);
+      }, 5 * 60 * 1000);
+    }
   } finally {
     isRunning = false;
   }
@@ -52,11 +64,10 @@ export function startBackgroundWorker() {
   // Run immediately on startup
   runScheduler().catch(console.error);
 
-  // Then run every 6 hours (6 * 60 * 60 * 1000 = 21600000 ms)
-  // For demo/hackathon purposes, running every 1 hour (3600000 ms)
-  setInterval(() => {
+  // Run every hour
+  cron.schedule('0 * * * *', () => {
     runScheduler().catch(console.error);
-  }, 3600000);
+  });
 
-  console.log("[Scheduler] Background worker started. Polling every hour.");
+  console.log("[Scheduler] Background worker started with node-cron. Polling every hour.");
 }

@@ -15,7 +15,7 @@ export class CpppConnector extends BaseConnector {
 
   protected async fetchTenders(): Promise<any[]> {
     console.log(`[${this.sourceName}] Launching headless browser...`);
-    const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox'] });
+    const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
     const page = await browser.newPage();
     
     // Set a normal user agent

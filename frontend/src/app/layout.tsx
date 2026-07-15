@@ -15,6 +15,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TenderIQ AI | Government Bid Assistant",
   description: "AI-powered Government Tender Management Platform",
+  manifest: "/manifest.json",
+  applicationName: "TenderIQ",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "TenderIQ",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport = {
+  themeColor: "#09090b",
 };
 
 export default function RootLayout({

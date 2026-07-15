@@ -1,26 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "crons": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "backend/src/app.ts",
-      "use": "@vercel/node"
+      "path": "/api/cron/sync",
+      "schedule": "0 * * * *"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/src/app.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }

@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import { db } from "@/lib/db";
 
 export const authOptions: AuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || "mock-secret-for-build",
   adapter: PrismaAdapter(db),
   session: {
     strategy: "jwt",

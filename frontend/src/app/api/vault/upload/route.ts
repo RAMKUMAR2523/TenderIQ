@@ -5,15 +5,18 @@ import { createClient } from "@supabase/supabase-js";
 import { db } from "@/lib/db";
 
 // Using Service Role Key to bypass RLS for server-side uploads
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
 // The backend .env has SUPABASE_SERVICE_ROLE_KEY, but frontend doesn't. 
 // We will use the ANON key but since it's an API route we should ideally use the service role key.
 // Let's use the env variable if available, else anon key (may fail RLS if not configured).
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+
 
 export async function POST(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mock.supabase.co";
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "mock";
+  const supabase = createClient(supabaseUrl, supabaseKey);
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.companyId) {
@@ -67,3 +70,4 @@ export async function POST(req: Request) {
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+

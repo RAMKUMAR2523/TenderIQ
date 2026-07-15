@@ -4,11 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/lib/db";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+
+
 
 export async function GET(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mock.supabase.co";
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "mock";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.companyId) {
@@ -44,3 +48,4 @@ export async function GET(req: Request) {
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+

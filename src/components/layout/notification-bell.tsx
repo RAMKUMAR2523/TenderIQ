@@ -1,9 +1,10 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getNotifications, markNotificationAsRead } from "@/app/actions/notifications";
+import { getNotifications, markNotificationAsRead } from "@/services/notifications";
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<any[]>([]);

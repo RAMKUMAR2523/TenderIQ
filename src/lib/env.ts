@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -11,17 +12,17 @@ const envSchema = z.object({
 });
 
 export function getEnv() {
-  if (process.env.NODE_ENV !== "production") {
-    return process.env as Record<string, string>;
+  if (import.meta.env.NODE_ENV !== "production") {
+    return import.meta.env as Record<string, string>;
   }
 
-  const result = envSchema.safeParse(process.env);
+  const result = envSchema.safeParse(import.meta.env);
   
   if (!result.success) {
     console.error("❌ Invalid environment variables:", result.error.flatten().fieldErrors);
-    // Return the process.env anyway to not crash build time processes.
+    // Return the import.meta.env anyway to not crash build time processes.
     // At runtime, APIs should throw if specific keys are missing.
-    return process.env as Record<string, string>;
+    return import.meta.env as Record<string, string>;
   }
   
   return result.data;

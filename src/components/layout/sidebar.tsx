@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { 
   Briefcase, 
   LayoutDashboard, 
@@ -38,7 +38,7 @@ export function Sidebar() {
     {
       label: "Company Profile",
       icon: Building2,
-      href: "/profile",
+      href: "/company",
       color: "text-emerald-500",
     },
     {
@@ -58,7 +58,7 @@ export function Sidebar() {
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-slate-900 text-white">
       <div className="px-3 py-2 flex-1">
-        <Link href="/dashboard" className="flex items-center pl-3 mb-14">
+        <Link to="/dashboard" className="flex items-center pl-3 mb-14">
           <h1 className="text-2xl font-bold">
             TenderIQ <span className="text-blue-500">AI</span>
           </h1>
@@ -67,7 +67,7 @@ export function Sidebar() {
           {routes.map((route) => (
             <Link
               key={route.href}
-              href={route.href}
+              to={route.href}
               className="text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition"
             >
               <div className="flex items-center flex-1">

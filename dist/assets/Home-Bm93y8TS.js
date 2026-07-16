@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-uQ-Zf10y.js";import{it as t}from"./index-5PXj5RIs.js";var n=e();function r(){return(0,n.jsx)(t,{to:`/dashboard`})}export{r as default};
